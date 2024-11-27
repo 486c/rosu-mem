@@ -12,7 +12,7 @@ use windows::Win32::{
     },
 };
 
-use crate::memory::{
+use crate::{
     process::{MemoryRegion, Process, ProcessTraits},
     signature::find_signature,
 };
