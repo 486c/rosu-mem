@@ -1,9 +1,8 @@
-use std::io::Read;
-use rand::{prelude::*, distributions::Alphanumeric};
 use paste::paste;
+use rand::{distributions::Alphanumeric, prelude::*};
+use std::io::Read;
 
-use rosu_mem::process::ProcessTraits;
-use rosu_mem::error::*;
+use rosu_mem::{error::*, process::ProcessTraits};
 
 macro_rules! prim_read_test {
     ($t: ident) => {
@@ -21,9 +20,9 @@ macro_rules! prim_read_test {
                 let tmp = p.[<read_ $t>](0).unwrap();
                 assert_eq!(tmp, num);
             }
-            
+
         }
-    }
+    };
 }
 
 macro_rules! prim_read_array_test {
@@ -31,7 +30,7 @@ macro_rules! prim_read_array_test {
         paste! {
             #[test]
             fn [<test_ $t _array>]() {
-                // Constructing fake array identical how arrays 
+                // Constructing fake array identical how arrays
                 // stored inside osu!
                 // Type for this example is i32
                 // | 00 00 00 00 | 0C 00 00 00 | 00 00 00 00 |
@@ -40,7 +39,7 @@ macro_rules! prim_read_array_test {
                 // ^ [3]         ^ [4]
                 //
                 // [1] - Bytes we don't care about
-                // [2] - Pointer to our data, since we 
+                // [2] - Pointer to our data, since we
                 // are inside test then it's
                 // just a index to our test array
                 // [3] - Size of array
@@ -88,7 +87,7 @@ macro_rules! prim_read_array_test {
                 assert_eq!(fake_output_buff, items);
             }
         }
-    }
+    };
 }
 
 pub struct FakeProccess {
@@ -109,23 +108,23 @@ impl ProcessTraits for FakeProccess {
     }
 
     fn read_signature(
-        &self, 
-        _sign: &rosu_mem::signature::Signature
+        &self,
+        _sign: &rosu_mem::signature::Signature,
     ) -> Result<i32, ProcessError> {
         todo!()
     }
 
     fn read(
-        &self, 
-        addr: i32, 
-        len: usize, 
-        buff: &mut [u8]
+        &self,
+        addr: i32,
+        len: usize,
+        buff: &mut [u8],
     ) -> Result<(), ProcessError> {
         // Addr - starting index
         // self.buff.set_position(addr as u64);
-        //self.buff.read(buff);
+        // self.buff.read(buff);
 
-        let mut slice = &self.buff[addr as usize..addr as usize+len];
+        let mut slice = &self.buff[addr as usize..addr as usize + len];
         let _ = slice.read(buff);
 
         Ok(())
@@ -135,13 +134,11 @@ impl ProcessTraits for FakeProccess {
 #[test]
 fn test_uleb() {
     let buff = vec![
-        0x0B, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00, 0x00, 0x00, 0x0A
+        0x0B, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x00, 0x00, 0x00, 0x0A,
     ];
 
-    let p = FakeProccess {
-        buff
-    };
-    
+    let p = FakeProccess { buff };
+
     // Skipping that one 0x0b byte
     assert_eq!(p.read_uleb128(1).unwrap(), 4);
 }
@@ -154,14 +151,12 @@ fn test_string() {
         let mut buff = vec![0x0; 4]; // Random 4 bytes
         buff.extend_from_slice(&len.to_le_bytes());
 
-        let random_string: String = (0..len)
-            .map(|_| rng.sample(Alphanumeric) as char)
-            .collect();
+        let random_string: String =
+            (0..len).map(|_| rng.sample(Alphanumeric) as char).collect();
 
         // convert to UTF-16 bytes
-        let random_string_bytes = random_string
-            .bytes()
-            .flat_map(|byte| [byte, 0]);
+        let random_string_bytes =
+            random_string.bytes().flat_map(|byte| [byte, 0]);
 
         buff.extend(random_string_bytes);
 

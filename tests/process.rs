@@ -4,24 +4,23 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
     } else if #[cfg(target_os = "windows")] {
         use windows::{Win32::{Foundation::{
-            CloseHandle, FALSE }}, 
+            CloseHandle, FALSE }},
             core::PSTR
         };
 
-        use windows::Win32::System::Threading::{ 
-            OpenProcess, 
+        use windows::Win32::System::Threading::{
+            OpenProcess,
             PROCESS_QUERY_INFORMATION,
             QueryFullProcessImageNameA,
             PROCESS_NAME_FORMAT
         };
-    } 
+    }
 }
 
 #[cfg(target_os = "windows")]
 fn get_process_name(id: u32) -> String {
     unsafe {
-        let handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, id)
-            .unwrap();
+        let handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, id).unwrap();
 
         let mut size = 128;
         let mut buff: Vec<u8> = Vec::with_capacity(128);
@@ -31,7 +30,7 @@ fn get_process_name(id: u32) -> String {
             handle,
             PROCESS_NAME_FORMAT(0),
             name,
-            &mut size
+            &mut size,
         );
 
         CloseHandle(handle);
@@ -40,16 +39,17 @@ fn get_process_name(id: u32) -> String {
 
         let path = std::path::Path::new(&name);
 
-        path.file_name().unwrap()
-            .to_os_string().into_string().unwrap()
+        path.file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap()
     }
 }
 
 #[cfg(target_os = "linux")]
 fn get_process_name(id: u32) -> String {
-    std::fs::read_to_string(
-        format!("/proc/{}/cmdline", id)
-    ).unwrap()
+    std::fs::read_to_string(format!("/proc/{}/cmdline", id)).unwrap()
 }
 
 /// Trying to find current process (process in which this test is running)

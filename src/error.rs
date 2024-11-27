@@ -1,25 +1,21 @@
 use std::{
-    string::FromUtf8Error, 
-    fmt::Display, 
-    str::Utf8Error,
-    num::ParseIntError,
-    error::Error
+    error::Error, fmt::Display, num::ParseIntError, str::Utf8Error,
+    string::FromUtf8Error,
 };
-
 
 #[derive(Debug)]
 pub enum ProcessError {
     ProcessNotFound,
     ExecutablePathNotFound,
     NotEnoughPermissions,
-    IoError{
-        inner: std::io::Error
+    IoError {
+        inner: std::io::Error,
     },
     FromUtf8Error,
     ConvertionError,
     BadAddress(usize, usize),
     SignatureNotFound(String),
-    OsError{
+    OsError {
         #[cfg(target_os = "linux")]
         inner: nix::errno::Errno,
         #[cfg(target_os = "windows")]
@@ -29,7 +25,7 @@ pub enum ProcessError {
 
 impl From<std::io::Error> for ProcessError {
     fn from(value: std::io::Error) -> Self {
-        Self::IoError{ inner: value }
+        Self::IoError { inner: value }
     }
 }
 
@@ -62,10 +58,8 @@ impl From<Utf8Error> for ProcessError {
 impl From<nix::errno::Errno> for ProcessError {
     fn from(inner: nix::errno::Errno) -> Self {
         match inner {
-            nix::errno::Errno::EPERM => 
-                Self::NotEnoughPermissions,
-            nix::errno::Errno::ESRCH => 
-                Self::ProcessNotFound,
+            nix::errno::Errno::EPERM => Self::NotEnoughPermissions,
+            nix::errno::Errno::ESRCH => Self::ProcessNotFound,
             _ => Self::OsError { inner },
         }
     }
@@ -75,38 +69,35 @@ impl From<nix::errno::Errno> for ProcessError {
 #[cfg(target_os = "windows")]
 impl From<windows::core::Error> for ProcessError {
     fn from(inner: windows::core::Error) -> Self {
-        Self::OsError{
-            inner
-        }// TODO add code value
+        Self::OsError { inner } // TODO add code value
     }
 }
 
 impl Display for ProcessError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProcessError::ProcessNotFound => 
-                write!(f, "Process not found!"),
-            ProcessError::IoError { .. } => 
-                write!(f, "Got I/O error!"),
-            ProcessError::FromUtf8Error => 
-                write!(f, "Got Error when converting bytes to string!"),
-            ProcessError::ConvertionError => 
-                write!(f, "Got error during type convertion"),
-            ProcessError::SignatureNotFound(v) => 
-                write!(f, "Cannot find signature {}", v),
-            ProcessError::OsError { .. } => 
-                write!(f, "Got OS error"),
-            ProcessError::NotEnoughPermissions => 
-                write!(
-                    f, 
-                    "Not enough permissions to run, please run as sudo"
-                ),
+            ProcessError::ProcessNotFound => write!(f, "Process not found!"),
+            ProcessError::IoError { .. } => write!(f, "Got I/O error!"),
+            ProcessError::FromUtf8Error => {
+                write!(f, "Got Error when converting bytes to string!")
+            }
+            ProcessError::ConvertionError => {
+                write!(f, "Got error during type convertion")
+            }
+            ProcessError::SignatureNotFound(v) => {
+                write!(f, "Cannot find signature {}", v)
+            }
+            ProcessError::OsError { .. } => write!(f, "Got OS error"),
+            ProcessError::NotEnoughPermissions => {
+                write!(f, "Not enough permissions to run, please run as sudo")
+            }
             ProcessError::BadAddress(addr, len) => {
-                let _  = writeln!(f, "Trying to read bad address");
+                let _ = writeln!(f, "Trying to read bad address");
                 writeln!(f, "Address: {:X}, Length: {:X}", addr, len)
-            },
-            ProcessError::ExecutablePathNotFound => 
-                write!(f, "Executable path not found!"),
+            }
+            ProcessError::ExecutablePathNotFound => {
+                write!(f, "Executable path not found!")
+            }
         }
     }
 }
@@ -151,10 +142,12 @@ impl Error for ParseSignatureError {
 impl Display for ParseSignatureError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseSignatureError::InvalidLength(len) => 
-                write!(f, "Invalid string length {len}"),
-            ParseSignatureError::InvalidInt { .. } => 
-                f.write_str("Failed to parse integer"),
+            ParseSignatureError::InvalidLength(len) => {
+                write!(f, "Invalid string length {len}")
+            }
+            ParseSignatureError::InvalidInt { .. } => {
+                f.write_str("Failed to parse integer")
+            }
         }
     }
 }

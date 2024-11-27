@@ -146,7 +146,10 @@ mod tests {
         let s = Signature::from_str("FF 30 A3 50 ?? ?? ?? FF").unwrap();
         assert_eq!(s.bytes.len(), 8);
 
-        let s = Signature::from_str("FF 30 A3 50 ?? ?? ?? FF CB FF FF ?? 10 2B 4A ?? ??").unwrap();
+        let s = Signature::from_str(
+            "FF 30 A3 50 ?? ?? ?? FF CB FF FF ?? 10 2B 4A ?? ??",
+        )
+        .unwrap();
         assert_eq!(s.bytes.len(), 17);
     }
 

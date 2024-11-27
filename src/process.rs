@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use super::error::ProcessError;
-use super::signature::Signature;
+use super::{error::ProcessError, signature::Signature};
 use paste::paste;
 
 #[cfg(target_os = "windows")]
@@ -10,7 +9,7 @@ use windows::Win32::Foundation::HANDLE;
 #[derive(Debug)]
 pub struct MemoryRegion {
     pub from: usize,
-    pub size: usize, 
+    pub size: usize,
 }
 
 macro_rules! prim_read_impl {
@@ -26,7 +25,7 @@ macro_rules! prim_read_impl {
                 Ok($t::from_le_bytes(bytes))
             }
         }
-    }
+    };
 }
 
 macro_rules! prim_read_array_impl {
@@ -57,7 +56,7 @@ macro_rules! prim_read_array_impl {
                 Ok(())
             }
         }
-    }
+    };
 }
 
 pub struct Process {
@@ -75,27 +74,24 @@ pub struct Process {
     pub executable_dir: Option<PathBuf>,
 }
 
-pub trait ProcessTraits where Self: Sized {
+pub trait ProcessTraits
+where
+    Self: Sized,
+{
     fn initialize(proc_name: &str) -> Result<Self, ProcessError>;
     fn find_process(proc_name: &str) -> Result<Self, ProcessError>;
     fn read_regions(self) -> Result<Self, ProcessError>;
 
-    fn read_signature(
-        &self, 
-        sign: &Signature
-    ) -> Result<i32, ProcessError>;
+    fn read_signature(&self, sign: &Signature) -> Result<i32, ProcessError>;
 
     fn read(
-        &self, 
-        addr: i32, 
-        len: usize, 
-        buff: &mut [u8]
+        &self,
+        addr: i32,
+        len: usize,
+        buff: &mut [u8],
     ) -> Result<(), ProcessError>;
 
-    fn read_uleb128(
-        &self,
-        mut addr: i32,
-    ) -> Result<u64, ProcessError> {
+    fn read_uleb128(&self, mut addr: i32) -> Result<u64, ProcessError> {
         let mut value: u64 = 0;
         let mut bytes_read = 0;
 
@@ -108,7 +104,7 @@ pub trait ProcessTraits where Self: Sized {
 
             bytes_read += 1;
 
-            if (byte &!0b0111_1111) == 0 {
+            if (byte & !0b0111_1111) == 0 {
                 break;
             }
         }
@@ -116,10 +112,7 @@ pub trait ProcessTraits where Self: Sized {
         Ok(value)
     }
 
-    fn read_string(
-        &self,
-        addr: i32,
-    ) -> Result<String, ProcessError> {
+    fn read_string(&self, addr: i32) -> Result<String, ProcessError> {
         let mut addr = self.read_i32(addr)?;
         // C# string structure: 4B obj header, 4B str len, str itself
         let len = self.read_u32(addr + 0x4)? as usize;
@@ -130,7 +123,7 @@ pub trait ProcessTraits where Self: Sized {
         let byte_buff = unsafe {
             std::slice::from_raw_parts_mut(
                 buff.as_mut_ptr() as *mut u8,
-                buff.len() * 2
+                buff.len() * 2,
             )
         };
 
@@ -138,7 +131,7 @@ pub trait ProcessTraits where Self: Sized {
 
         Ok(String::from_utf16_lossy(&buff))
     }
-    
+
     prim_read_impl!(i8);
     prim_read_impl!(i16);
     prim_read_impl!(i32);
@@ -169,4 +162,3 @@ pub trait ProcessTraits where Self: Sized {
     prim_read_array_impl!(f32);
     prim_read_array_impl!(f64);
 }
-
