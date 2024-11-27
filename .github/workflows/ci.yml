@@ -1,4 +1,4 @@
-name: rosu-memory
+name: rosu-mem
 
 on:
   push:
