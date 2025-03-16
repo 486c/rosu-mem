@@ -78,8 +78,27 @@ pub trait ProcessTraits
 where
     Self: Sized,
 {
-    fn initialize(proc_name: &str) -> Result<Self, ProcessError>;
-    fn find_process(proc_name: &str) -> Result<Self, ProcessError>;
+
+    /// Initialize a `Process` struct
+    /// 
+    /// * `proc_name` - Name of the process or key words
+    /// * `exclude` - Key words to avoid when searching for process name
+    /// 
+    /// Notes
+    /// For more details of searching the process name see [`find_process`] 
+    /// method
+    fn initialize(proc_name: &str, exclude: &[&str]) -> Result<Self, ProcessError>;
+
+    /// Attemp to find a process
+    ///
+    /// * `proc_name` - Name of the process or key words
+    /// * `exclude` - Key words to avoid when searching for process name
+    ///
+    /// # Notes
+    /// It's going try to search process name by using `contains` function
+    /// with `proc_name` argument on process name. Same applies to `exclude`
+    fn find_process(proc_name: &str, exclude: &[&str]) -> Result<Self, ProcessError>;
+
     fn read_regions(self) -> Result<Self, ProcessError>;
 
     fn read_signature(&self, sign: &Signature) -> Result<i32, ProcessError>;
