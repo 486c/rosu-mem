@@ -59,7 +59,7 @@ fn test_process_finder() {
     let proc_id = std::process::id();
     let name = get_process_name(proc_id);
 
-    let proc = Process::find_process(&name).unwrap();
+    let proc = Process::find_process(&name, &[]).unwrap();
     assert_eq!(proc_id, proc.pid as u32);
 
     let proc = proc.read_regions().unwrap();
