@@ -16,13 +16,16 @@ use super::signature::{find_signature, Signature};
 impl ProcessTraits for Process {
     fn initialize(
         proc_name: &str,
-        exclude: &[&str]
+        exclude: &[&str],
     ) -> Result<Process, super::error::ProcessError> {
         let process = Process::find_process(proc_name, exclude)?;
         process.read_regions()
     }
 
-    fn find_process(proc_name: &str, exclude: &[&str]) -> Result<Process, ProcessError> {
+    fn find_process(
+        proc_name: &str,
+        exclude: &[&str],
+    ) -> Result<Process, ProcessError> {
         let paths = fs::read_dir("/proc")?;
 
         'path_loop: for path in paths {

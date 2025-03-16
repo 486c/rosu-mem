@@ -27,12 +27,18 @@ use windows::Win32::{
 };
 
 impl ProcessTraits for Process {
-    fn initialize(proc_name: &str) -> Result<Process, ProcessError> {
-        let process = Process::find_process(proc_name)?;
+    fn initialize(
+        proc_name: &str,
+        exclude: &[&str],
+    ) -> Result<Process, ProcessError> {
+        let process = Process::find_process(proc_name, exclude)?;
         process.read_regions()
     }
 
-    fn find_process(proc_name: &str) -> Result<Process, ProcessError> {
+    fn find_process(
+        proc_name: &str,
+        exclude: &[&str],
+    ) -> Result<Process, ProcessError> {
         let mut processes = [0u32; 512];
         let mut returned: u32 = 0;
 
@@ -48,7 +54,7 @@ impl ProcessTraits for Process {
 
         let length = returned as usize / std::mem::size_of::<u32>();
 
-        for pid in &processes[0..length] {
+        'pid_loop: for pid in &processes[0..length] {
             let handle = match unsafe {
                 OpenProcess(
                     PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
@@ -73,6 +79,13 @@ impl ProcessTraits for Process {
             let name = std::str::from_utf8(&string_buff[0..size as usize])?;
 
             if name.contains(proc_name) {
+                for exclude_word in exclude {
+                    if name.contains(exclude_word) {
+                        unsafe { CloseHandle(handle) };
+                        continue 'pid_loop;
+                    }
+                }
+
                 let executable_path = PathBuf::from(name);
                 let executable_dir =
                     executable_path.parent().map(|v| v.to_path_buf());
