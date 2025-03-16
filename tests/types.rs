@@ -95,11 +95,11 @@ pub struct FakeProccess {
 }
 
 impl ProcessTraits for FakeProccess {
-    fn initialize(_proc_name: &str) -> Result<Self, ProcessError> {
+    fn initialize(_proc_name: &str, _exclude: &[&str]) -> Result<Self, ProcessError> {
         todo!()
     }
 
-    fn find_process(_proc_name: &str) -> Result<Self, ProcessError> {
+    fn find_process(_proc_name: &str, _exclude: &[&str]) -> Result<Self, ProcessError> {
         todo!()
     }
 
