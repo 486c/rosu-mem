@@ -53,7 +53,7 @@ impl FromStr for Signature {
             return Err(ParseSignatureError::InvalidLength(value.len()));
         }
 
-        let capacity = (value.len() + 2) / 3;
+        let capacity = value.len().div_ceil(3);
         let mut bytes = Vec::with_capacity(capacity);
 
         for c in value.split(' ') {
