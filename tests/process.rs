@@ -1,4 +1,7 @@
-use rosu_mem::process::{Process, ProcessTraits};
+use rosu_mem::{
+    error::ProcessError,
+    process::{Process, ProcessTraits},
+};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
@@ -49,7 +52,7 @@ fn get_process_name(id: u32) -> String {
 
 #[cfg(target_os = "linux")]
 fn get_process_name(id: u32) -> String {
-    std::fs::read_to_string(format!("/proc/{}/cmdline", id)).unwrap()
+    std::fs::read_to_string(format!("/proc/{id}/cmdline")).unwrap()
 }
 
 /// Trying to find current process (process in which this test is running)
@@ -64,4 +67,18 @@ fn test_process_finder() {
 
     let proc = proc.read_regions().unwrap();
     assert!(!proc.maps.is_empty())
+}
+
+#[test]
+fn test_process_finder_exclude() {
+    let proc_id = std::process::id();
+    let name = get_process_name(proc_id);
+
+    let proc = Process::find_process(&name, &[&name]);
+
+    assert!(proc.is_err());
+
+    let Err(err) = proc else { panic!("not a Err") };
+
+    assert!(matches!(err, ProcessError::ProcessNotFound));
 }

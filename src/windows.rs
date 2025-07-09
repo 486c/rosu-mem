@@ -130,7 +130,10 @@ impl ProcessTraits for Process {
         Ok(self)
     }
 
-    fn read_signature(&self, sign: &Signature) -> Result<i32, ProcessError> {
+    fn read_signature<T: TryFrom<usize>>(
+        &self,
+        sign: &Signature,
+    ) -> Result<T, ProcessError> {
         let mut buf = Vec::new();
         let mut bytesread: usize = 0;
 
@@ -159,19 +162,24 @@ impl ProcessTraits for Process {
             }
 
             if let Some(offset) = find_signature(&buf[..bytesread], sign) {
-                return Ok((region.from + offset) as i32);
+                return (region.from + offset)
+                    .try_into()
+                    .map_err(|_| ProcessError::ConvertError);
             }
         }
 
         Err(ProcessError::SignatureNotFound(sign.to_string()))
     }
 
-    fn read(
+    fn read<T: TryInto<usize>>(
         &self,
-        addr: i32,
+        addr: T,
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
+        let addr: usize =
+            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
+
         let mut n = 0;
 
         let res = unsafe {
