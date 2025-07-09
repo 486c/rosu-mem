@@ -2,6 +2,11 @@
 name = "rosu-mem"
 version = "2.0.0"
 edition = "2021"
+description = "A memory reading library targeting osu!"
+homepage = "https://github.com/486c/rosu-mem"
+repository = "https://github.com/486c/rosu-mem"
+keywords = ["osu"]
+license = "MIT"
 
 [lib]
 crate-type = ["lib"]
