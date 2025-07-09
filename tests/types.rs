@@ -113,24 +113,26 @@ impl ProcessTraits for FakeProccess {
         todo!()
     }
 
-    fn read_signature(
+    fn read_signature<T: TryFrom<usize>>(
         &self,
         _sign: &rosu_mem::signature::Signature,
-    ) -> Result<i32, ProcessError> {
+    ) -> Result<T, ProcessError> {
         todo!()
     }
 
-    fn read(
+    fn read<T: TryInto<usize>>(
         &self,
-        addr: i32,
+        addr: T,
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
+        let addr: usize =
+            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
         // Addr - starting index
         // self.buff.set_position(addr as u64);
         // self.buff.read(buff);
 
-        let mut slice = &self.buff[addr as usize..addr as usize + len];
+        let mut slice = &self.buff[addr..addr + len];
         let _ = slice.read(buff);
 
         Ok(())

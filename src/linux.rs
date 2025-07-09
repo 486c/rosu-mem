@@ -94,26 +94,35 @@ impl ProcessTraits for Process {
 
             let mut split = line.split_whitespace();
             let range_raw = split.next().unwrap();
+            let mut permissions_raw_chars = split.next().unwrap().chars();
+
             let mut range_split = range_raw.split('-');
 
             let from_str = range_split.next().unwrap();
             let to_str = range_split.next().unwrap();
 
             let from = usize::from_str_radix(from_str, 16)?;
-
             let to = usize::from_str_radix(to_str, 16)?;
 
-            v.push(MemoryRegion {
-                from,
-                size: to - from,
-            });
+            let read = permissions_raw_chars.next().unwrap();
+            let write = permissions_raw_chars.next().unwrap();
+
+            if read == 'r' && write == 'w' {
+                v.push(MemoryRegion {
+                    from,
+                    size: to - from,
+                });
+            }
         }
 
         self.maps = v;
         Ok(self)
     }
 
-    fn read_signature(&self, sign: &Signature) -> Result<i32, ProcessError> {
+    fn read_signature<T: TryFrom<usize>>(
+        &self,
+        sign: &Signature,
+    ) -> Result<T, ProcessError> {
         let mut buff = Vec::new();
 
         for region in &self.maps {
@@ -140,23 +149,25 @@ impl ProcessTraits for Process {
             }
 
             if let Some(offset) = find_signature(buff.as_slice(), sign) {
-                return Ok((remote.base + offset) as i32);
+                return (remote.base + offset)
+                    .try_into()
+                    .map_err(|_| ProcessError::ConvertError);
             }
         }
 
         Err(ProcessError::SignatureNotFound(sign.to_string()))
     }
 
-    fn read(
+    fn read<T: TryInto<usize>>(
         &self,
-        addr: i32,
+        addr: T,
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
-        let remote = RemoteIoVec {
-            base: addr as usize,
-            len,
-        };
+        let addr: usize =
+            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
+
+        let remote = RemoteIoVec { base: addr, len };
 
         let slice = IoSliceMut::new(buff);
 
@@ -167,7 +178,7 @@ impl ProcessTraits for Process {
             Ok(_) => (),
             Err(e) => match e {
                 nix::errno::Errno::EFAULT => {
-                    return Err(ProcessError::BadAddress(addr as usize, len))
+                    return Err(ProcessError::BadAddress(addr, len))
                 }
                 _ => return Err(e.into()),
             },

@@ -15,9 +15,9 @@ pub struct MemoryRegion {
 macro_rules! prim_read_impl {
     ($t: ident) => {
         paste! {
-            fn [<read_ $t>](
+            fn [<read_ $t>]<T: TryInto<usize>>(
                 &self,
-                addr: i32
+                addr: T
             ) -> Result<$t, ProcessError> {
                 let mut bytes = [0u8; std::mem::size_of::<$t>()];
                 self.read(addr, std::mem::size_of::<$t>(), &mut bytes)?;
@@ -31,11 +31,14 @@ macro_rules! prim_read_impl {
 macro_rules! prim_read_array_impl {
     ($t: ident) => {
         paste! {
-            fn [<read_ $t _array>](
+            fn [<read_ $t _array>]<T: TryInto<usize>>(
                 &self,
-                addr: i32,
+                addr: T,
                 buff: &mut Vec<$t>
             ) -> Result<(), ProcessError> {
+                let addr: usize = addr.try_into()
+                    .map_err(|_| ProcessError::ConvertError)?;
+
                 let items_ptr = self.read_i32(addr + 4)?;
                 let size = self.read_i32(addr + 12)? as usize;
 
@@ -106,11 +109,14 @@ where
 
     fn read_regions(self) -> Result<Self, ProcessError>;
 
-    fn read_signature(&self, sign: &Signature) -> Result<i32, ProcessError>;
-
-    fn read(
+    fn read_signature<T: TryFrom<usize>>(
         &self,
-        addr: i32,
+        sign: &Signature,
+    ) -> Result<T, ProcessError>;
+
+    fn read<T: TryInto<usize>>(
+        &self,
+        addr: T,
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError>;
