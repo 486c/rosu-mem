@@ -21,6 +21,7 @@ pub enum ProcessError {
         #[cfg(target_os = "windows")]
         inner: windows::core::Error,
     },
+    ConvertError,
 }
 
 impl From<std::io::Error> for ProcessError {
@@ -85,7 +86,7 @@ impl Display for ProcessError {
                 write!(f, "Got error during type convertion")
             }
             ProcessError::SignatureNotFound(v) => {
-                write!(f, "Cannot find signature {}", v)
+                write!(f, "Cannot find signature {v}")
             }
             ProcessError::OsError { .. } => write!(f, "Got OS error"),
             ProcessError::NotEnoughPermissions => {
@@ -93,10 +94,13 @@ impl Display for ProcessError {
             }
             ProcessError::BadAddress(addr, len) => {
                 let _ = writeln!(f, "Trying to read bad address");
-                writeln!(f, "Address: {:X}, Length: {:X}", addr, len)
+                writeln!(f, "Address: {addr:X}, Length: {len:X}")
             }
             ProcessError::ExecutablePathNotFound => {
                 write!(f, "Executable path not found!")
+            }
+            ProcessError::ConvertError => {
+                write!(f, "Failed to converted passed address to usize")
             }
         }
     }
@@ -114,6 +118,7 @@ impl std::error::Error for ProcessError {
             ProcessError::SignatureNotFound(_) => None,
             ProcessError::OsError { inner } => Some(inner),
             ProcessError::BadAddress(..) => None,
+            ProcessError::ConvertError => None,
         }
     }
 }
