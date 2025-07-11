@@ -126,8 +126,9 @@ impl ProcessTraits for FakeProccess {
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
-        let addr: usize =
-            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
+        let addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
         // Addr - starting index
         // self.buff.set_position(addr as u64);
         // self.buff.read(buff);

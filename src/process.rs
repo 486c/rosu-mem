@@ -37,7 +37,7 @@ macro_rules! prim_read_array_impl {
                 buff: &mut Vec<$t>
             ) -> Result<(), ProcessError> {
                 let addr: usize = addr.try_into()
-                    .map_err(|_| ProcessError::ConvertError)?;
+                    .map_err(|_| ProcessError::AddressConvertError)?;
 
                 let items_ptr = self.read_i32(addr + 4)?;
                 let size = self.read_i32(addr + 12)? as usize;
