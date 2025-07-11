@@ -151,7 +151,7 @@ impl ProcessTraits for Process {
             if let Some(offset) = find_signature(buff.as_slice(), sign) {
                 return (remote.base + offset)
                     .try_into()
-                    .map_err(|_| ProcessError::ConvertError);
+                    .map_err(|_| ProcessError::AddressConvertError);
             }
         }
 
@@ -164,8 +164,9 @@ impl ProcessTraits for Process {
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
-        let addr: usize =
-            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
+        let addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
 
         let remote = RemoteIoVec { base: addr, len };
 
