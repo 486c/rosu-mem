@@ -164,7 +164,7 @@ impl ProcessTraits for Process {
             if let Some(offset) = find_signature(&buf[..bytesread], sign) {
                 return (region.from + offset)
                     .try_into()
-                    .map_err(|_| ProcessError::ConvertError);
+                    .map_err(|_| ProcessError::AddressConvertError);
             }
         }
 
@@ -177,8 +177,9 @@ impl ProcessTraits for Process {
         len: usize,
         buff: &mut [u8],
     ) -> Result<(), ProcessError> {
-        let addr: usize =
-            addr.try_into().map_err(|_| ProcessError::ConvertError)?;
+        let addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
 
         let mut n = 0;
 
