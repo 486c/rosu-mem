@@ -121,7 +121,14 @@ where
         buff: &mut [u8],
     ) -> Result<(), ProcessError>;
 
-    fn read_uleb128(&self, mut addr: i32) -> Result<u64, ProcessError> {
+    fn read_uleb128<T: TryInto<usize>>(
+        &self,
+        addr: T,
+    ) -> Result<u64, ProcessError> {
+        let mut addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
+
         let mut value: u64 = 0;
         let mut bytes_read = 0;
 
@@ -142,11 +149,36 @@ where
         Ok(value)
     }
 
-    fn read_string(&self, addr: i32) -> Result<String, ProcessError> {
-        let mut addr = self.read_i32(addr)?;
+    /// Reads a C# string based on C# string structure
+    /// Assumes passed `addr` is a pointer, so it's gonna make
+    /// additional pointer read.
+    fn read_string_from_ptr<T: TryInto<usize>>(
+        &self,
+        addr: T,
+    ) -> Result<String, ProcessError> {
+        let addr = self.read_i32(addr)?;
+
+        self.read_string(addr)
+    }
+
+    /// Reads a C# string based on C# string structure
+    /// Assumes passed `addr` is not a pointer, so no additional
+    /// pointer reads is gonna be made.
+    ///
+    /// If you have a pointer to string either read that pointer youself
+    /// or use [`read_string_from_ptr()`]
+    fn read_string<T: TryInto<usize>>(
+        &self,
+        addr: T,
+    ) -> Result<String, ProcessError> {
+        let mut addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
+
         // C# string structure: 4B obj header, 4B str len, str itself
-        let len = self.read_u32(addr + 0x4)? as usize;
-        addr += 0x8;
+        addr += 0x4; // Skipping 4B obj header
+        let len = self.read_u32(addr)? as usize; // Reading 4B str len
+        addr += 0x4; // Since we read length skipping it too
 
         let mut buff = vec![0u16; len];
 
