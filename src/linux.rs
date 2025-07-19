@@ -68,7 +68,7 @@ impl Process {
 
         let pid_str = buff.split(' ').next().unwrap();
 
-        let pid = pid_str.parse()?;
+        let pid = pid_str.parse::<i32>()?;
 
         Ok(LinuxProcessInfo {
             pid,
