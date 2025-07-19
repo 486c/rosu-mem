@@ -102,6 +102,10 @@ impl ProcessTraits for FakeProccess {
         todo!()
     }
 
+    fn initialize_manual(_pid: u32) -> Result<Self, ProcessError> {
+        todo!()
+    }
+
     fn find_process(
         _proc_name: &str,
         _exclude: &[&str],
