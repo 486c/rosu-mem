@@ -13,12 +13,98 @@ use crate::{
 
 use super::signature::{find_signature, Signature};
 
+struct LinuxProcessInfo {
+    pid: u32,
+    cmd_buff: String,
+    executable_dir: Option<PathBuf>,
+}
+
+impl Process {
+    fn get_processes_infos() -> Result<Vec<LinuxProcessInfo>, ProcessError> {
+        let paths = fs::read_dir("/proc")?;
+        let mut infos: Vec<LinuxProcessInfo> = Vec::new();
+
+        for path in paths {
+            let p = path?.path();
+
+            let info = match Self::get_proc_info(p) {
+                Ok(info) => info,
+                Err(_) => continue ,
+            };
+
+            infos.push(info);
+        }
+
+        Ok(infos)
+    }
+
+    fn get_proc_info(path: PathBuf) -> Result<LinuxProcessInfo, ProcessError> {
+        if !path.is_dir() {
+            return Err(ProcessError::ProcessNotFound);
+        }
+
+        let cmd_line = path.join("cmdline");
+
+        if !cmd_line.exists() {
+            return Err(ProcessError::ProcessNotFound);
+        }
+
+        let cmd_buff = fs::read_to_string(cmd_line)?;
+        let mut cmd_buff_temp = cmd_buff.clone();
+
+        let stat = path.join("stat");
+        let buff = fs::read_to_string(stat)?;
+
+        // Formatting path
+        cmd_buff_temp.retain(|c| c != '\0');
+        cmd_buff_temp = cmd_buff_temp.replace('\\', "/");
+
+        cmd_buff_temp.remove(0);
+        cmd_buff_temp.remove(0);
+
+        let executable_path = PathBuf::from(cmd_buff_temp);
+        let executable_dir =
+            executable_path.parent().map(|v| v.to_path_buf());
+
+        let pid_str = buff.split(' ').next().unwrap();
+
+        let pid = pid_str.parse::<i32>()?;
+
+        Ok(LinuxProcessInfo {
+            pid: pid as i32,
+            cmd_buff,
+            executable_dir,
+        })
+    }
+}
+
 impl ProcessTraits for Process {
     fn initialize(
         proc_name: &str,
         exclude: &[&str],
-    ) -> Result<Process, super::error::ProcessError> {
+    ) -> Result<Process, ProcessError> {
         let process = Process::find_process(proc_name, exclude)?;
+
+        process.read_regions()
+    }
+
+    fn initialize_manual(pid: u32) -> Result<Process, ProcessError> {
+        let infos = match Self::get_processes_infos() {
+            Ok(infos) => infos,
+            Err(_) => return Err(ProcessError::ProcessNotFound),
+        };
+
+        let info = match infos.iter().find(|info| info.pid == pid) {
+            Some(info) => info,
+            None => return Err(ProcessError::ProcessNotFound),
+        };
+
+        let process = Process {
+            pid: info.pid,
+            maps: Vec::new(),
+            executable_dir: info.executable_dir,
+        };
+
         process.read_regions()
     }
 
@@ -26,59 +112,37 @@ impl ProcessTraits for Process {
         proc_name: &str,
         exclude: &[&str],
     ) -> Result<Process, ProcessError> {
-        let paths = fs::read_dir("/proc")?;
+        let infos = match Self::get_processes_infos() {
+            Ok(infos) => infos,
+            Err(_) => return Err(ProcessError::ProcessNotFound),
+        };
 
-        'path_loop: for path in paths {
-            let p = path?.path();
+        let info = infos.iter().find(|info| {
+            let line = info.cmd_buff.split(' ').next().unwrap();
 
-            if !p.is_dir() {
-                continue;
+            if !line.contains(proc_name) {
+                return false
             }
 
-            let cmd_line = p.join("cmdline");
-
-            if !cmd_line.exists() {
-                continue;
-            }
-
-            let mut cmd_buff = fs::read_to_string(cmd_line)?;
-
-            let line = cmd_buff.split(' ').next().unwrap();
-
-            if line.contains(proc_name) {
-                for exclude_word in exclude {
-                    if line.contains(exclude_word) {
-                        continue 'path_loop;
-                    }
+            for exclude_word in exclude {
+                if line.contains(exclude_word) {
+                    return false;
                 }
-
-                let stat = p.join("stat");
-                let buff = fs::read_to_string(stat)?;
-
-                // Formatting path
-                cmd_buff.retain(|c| c != '\0');
-                cmd_buff = cmd_buff.replace('\\', "/");
-
-                cmd_buff.remove(0);
-                cmd_buff.remove(0);
-
-                let executable_path = PathBuf::from(cmd_buff);
-                let executable_dir =
-                    executable_path.parent().map(|v| v.to_path_buf());
-
-                let pid_str = buff.split(' ').next().unwrap();
-
-                let pid = pid_str.parse()?;
-
-                return Ok(Self {
-                    pid,
-                    maps: Vec::new(),
-                    executable_dir,
-                });
             }
-        }
 
-        Err(ProcessError::ProcessNotFound)
+            true
+        });
+
+        let info = match info {
+            Some(info) => info,
+            None => return Err(ProcessError::ProcessNotFound),
+        };
+
+        return Ok(Process {
+            pid: info.pid as i32,
+            maps: Vec::new(),
+            executable_dir: info.executable_dir,
+        });
     }
 
     fn read_regions(mut self) -> Result<Process, ProcessError> {

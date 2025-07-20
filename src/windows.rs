@@ -26,12 +26,71 @@ use windows::Win32::{
     },
 };
 
+struct WindowsProcessInfo {
+    handle: HANDLE,
+    name: String,
+    executable_dir: Option<PathBuf>,
+}
+
+impl Process {
+    fn create_process(pid: u32) -> Result<WindowsProcessInfo, ProcessError> {
+        let handle = match unsafe {
+            OpenProcess(
+                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+                FALSE,
+                pid,
+            )
+        } {
+            Ok(h) => h,
+            Err(_) => return Err(ProcessError::ProcessNotFound),
+        };
+
+        let mut string_buff = [0u8; 256];
+
+        let size = unsafe {
+            GetModuleFileNameExA(
+                handle,
+                HMODULE(0),
+                string_buff.as_mut_slice(),
+            )
+        };
+
+        let name = std::str::from_utf8(&string_buff[0..size as usize])?;
+        let executable_path = PathBuf::from(name);
+        let executable_dir =
+            executable_path.parent().map(|v| v.to_path_buf());
+
+        Ok(WindowsProcessInfo {
+            handle,
+            name: String::from(name),
+            executable_dir,
+        })
+    }
+}
+
 impl ProcessTraits for Process {
     fn initialize(
         proc_name: &str,
         exclude: &[&str],
     ) -> Result<Process, ProcessError> {
         let process = Process::find_process(proc_name, exclude)?;
+
+        process.read_regions()
+    }
+
+    fn initialize_manual(pid: u32) -> Result<Process, ProcessError> {
+        let info = match Self::create_process(pid) {
+            Ok(info) => info,
+            Err(_) => return Err(ProcessError::ProcessNotFound),
+        };
+
+        let process = Process {
+            pid,
+            handle: info.handle,
+            maps: Vec::new(),
+            executable_dir: info.executable_dir,
+        };
+
         process.read_regions()
     }
 
@@ -55,49 +114,27 @@ impl ProcessTraits for Process {
         let length = returned as usize / std::mem::size_of::<u32>();
 
         'pid_loop: for pid in &processes[0..length] {
-            let handle = match unsafe {
-                OpenProcess(
-                    PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
-                    FALSE,
-                    *pid,
-                )
-            } {
-                Ok(h) => h,
+            let info = match Self::create_process(*pid) {
+                Ok(info) => info,
                 Err(_) => continue,
             };
 
-            let mut string_buff = [0u8; 256];
-
-            let size = unsafe {
-                GetModuleFileNameExA(
-                    handle,
-                    HMODULE(0),
-                    string_buff.as_mut_slice(),
-                )
-            };
-
-            let name = std::str::from_utf8(&string_buff[0..size as usize])?;
-
-            if name.contains(proc_name) {
+            if info.name.contains(proc_name) {
                 for exclude_word in exclude {
-                    if name.contains(exclude_word) {
-                        unsafe { CloseHandle(handle) };
+                    if info.name.contains(exclude_word) {
+                        unsafe { CloseHandle(info.handle) };
                         continue 'pid_loop;
                     }
                 }
 
-                let executable_path = PathBuf::from(name);
-                let executable_dir =
-                    executable_path.parent().map(|v| v.to_path_buf());
-
                 return Ok(Process {
                     pid: *pid,
-                    handle,
+                    handle: info.handle,
                     maps: Vec::new(),
-                    executable_dir,
+                    executable_dir: info.executable_dir,
                 });
             } else {
-                unsafe { CloseHandle(handle) };
+                unsafe { CloseHandle(info.handle) };
             }
         }
 
