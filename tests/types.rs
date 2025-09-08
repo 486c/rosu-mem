@@ -177,6 +177,57 @@ fn test_string() {
 }
 
 #[test]
+fn test_string_with_limit_fail_all() {
+    let mut rng = thread_rng();
+
+    for len in [10u32, 16, 32, 100, 256, 1024] {
+        let mut buff = vec![0x0; 4]; // Random 4 bytes
+        buff.extend_from_slice(&len.to_le_bytes());
+
+        let random_string: String =
+            (0..len).map(|_| rng.sample(Alphanumeric) as char).collect();
+
+        // convert to UTF-16 bytes
+        let random_string_bytes =
+            random_string.bytes().flat_map(|byte| [byte, 0]);
+
+        buff.extend(random_string_bytes);
+
+        let p = FakeProccess { buff };
+
+        let read_string = p.read_string_with_limit(0, 8);
+        assert!(read_string.is_err());
+        assert!(matches!(read_string, Err(ProcessError::StringTooLarge)))
+    }
+}
+
+#[test]
+fn test_string_with_limit_no_fail() {
+    let mut rng = thread_rng();
+
+    for len in [10u32, 16, 32, 100, 256, 1024, 2047] {
+        let mut buff = vec![0x0; 4]; // Random 4 bytes
+        buff.extend_from_slice(&len.to_le_bytes());
+
+        let random_string: String =
+            (0..len).map(|_| rng.sample(Alphanumeric) as char).collect();
+
+        // convert to UTF-16 bytes
+        let random_string_bytes =
+            random_string.bytes().flat_map(|byte| [byte, 0]);
+
+        buff.extend(random_string_bytes);
+
+        let p = FakeProccess { buff };
+
+        let read_string = p.read_string_with_limit(0, 2048);
+        assert!(!read_string.is_err());
+        let read_string = read_string.unwrap();
+        assert_eq!(read_string, random_string);
+    }
+}
+
+#[test]
 fn test_string_from_ptr_simple() {
     let mut rng = thread_rng();
 

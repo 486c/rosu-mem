@@ -149,6 +149,58 @@ where
         Ok(value)
     }
 
+    /// Same behaviour as [`ProcessTraits::read_string_from_ptr()`]
+    ///
+    /// The only diffrence is that function will throw
+    /// a [`ProcessError::StringTooLarge`] error if readed string length
+    /// is over a provided limit
+    fn read_string_with_limit_from_ptr<T: TryInto<usize>>(
+        &self,
+        addr: T,
+        limit: usize,
+    ) -> Result<String, ProcessError> {
+        let addr = self.read_i32(addr)?;
+
+        self.read_string_with_limit(addr, limit)
+    }
+
+    /// Reads a C# string. For more info checkout [`ProcessTraits::read_string()`]
+    ///
+    /// The only diffrence is that function will throw
+    /// a [`ProcessError::StringTooLarge`] error if readed string length
+    /// is over a provided limit
+    fn read_string_with_limit<T: TryInto<usize>>(
+        &self,
+        addr: T,
+        limit: usize,
+    ) -> Result<String, ProcessError> {
+        let mut addr: usize = addr
+            .try_into()
+            .map_err(|_| ProcessError::AddressConvertError)?;
+
+        addr += 0x4;
+        let len = self.read_u32(addr)? as usize; // Reading 4B str len
+
+        if len > limit {
+            return Err(ProcessError::StringTooLarge);
+        }
+
+        addr += 0x4; // Since we read length skipping it too
+
+        let mut buff = vec![0u16; len];
+
+        let byte_buff = unsafe {
+            std::slice::from_raw_parts_mut(
+                buff.as_mut_ptr() as *mut u8,
+                buff.len() * 2,
+            )
+        };
+
+        self.read(addr, byte_buff.len(), byte_buff)?;
+
+        Ok(String::from_utf16_lossy(&buff))
+    }
+
     /// Reads a C# string based on C# string structure
     /// Assumes passed `addr` is a pointer, so it's gonna make
     /// additional pointer read.
@@ -166,7 +218,7 @@ where
     /// pointer reads is gonna be made.
     ///
     /// If you have a pointer to string either read that pointer youself
-    /// or use [`read_string_from_ptr()`]
+    /// or use [`ProcessTraits::read_string_from_ptr()`]
     fn read_string<T: TryInto<usize>>(
         &self,
         addr: T,

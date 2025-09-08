@@ -20,7 +20,8 @@ pub enum ProcessError {
     SignatureNotFound(String),
     #[error("failed to convert address to usize")]
     AddressConvertError,
-
+    #[error("string is too large, over the limit")]
+    StringTooLarge,
     #[cfg(target_os = "linux")]
     #[error("os error `{0}`")]
     OsError(#[from] nix::errno::Errno),
