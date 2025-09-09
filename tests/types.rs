@@ -221,7 +221,7 @@ fn test_string_with_limit_no_fail() {
         let p = FakeProccess { buff };
 
         let read_string = p.read_string_with_limit(0, 2048);
-        assert!(!read_string.is_err());
+        assert!(read_string.is_ok());
         let read_string = read_string.unwrap();
         assert_eq!(read_string, random_string);
     }
@@ -300,6 +300,62 @@ fn test_string_from_ptr_randomized() {
 
         let read_string = p.read_string_from_ptr(0).unwrap();
         assert_eq!(read_string, random_string);
+    }
+}
+
+#[test]
+fn test_string_from_ptr_with_limit_randomized() {
+    let mut rng = thread_rng();
+
+    const STRING_LIMIT: usize = 100;
+
+    for _ in 0..=1337 {
+        let string_len: u32 = rng.gen_range(1..200);
+        let pointer_points_at: i32 = rng.gen_range(5..1000); // Starts at five to account for the sizeof(pointer)
+
+        let mut buff = Vec::with_capacity(pointer_points_at as usize);
+
+        buff.extend_from_slice(&pointer_points_at.to_le_bytes());
+        assert_eq!(buff.len(), 4);
+
+        let to_fill = pointer_points_at - 4;
+        buff.extend_from_slice(&vec![0u8; to_fill as usize]);
+
+        assert_eq!(buff.len(), pointer_points_at as usize);
+
+        buff.extend_from_slice(&[0x0, 0x0, 0x0, 0x0]); // Random 4 bytes
+        buff.extend_from_slice(&string_len.to_le_bytes()); // 4B string length
+
+        let random_string: String = (0..string_len)
+            .map(|_| rng.sample(Alphanumeric) as char)
+            .collect();
+
+        // convert to UTF-16 bytes
+        let random_string_bytes =
+            random_string.bytes().flat_map(|byte| [byte, 0]);
+
+        buff.extend(random_string_bytes);
+
+        // Checking if buffer is pointer_points_at + 4B obj header + 4B length + len(UTF16 string itself)
+        assert_eq!(
+            buff.len(),
+            (pointer_points_at + 4 + 4 + (string_len as i32 * 2)) as usize
+        );
+
+        let p = FakeProccess { buff };
+
+        let read_string_res =
+            p.read_string_with_limit_from_ptr(0, STRING_LIMIT);
+        if string_len as usize > STRING_LIMIT {
+            assert!(read_string_res.is_err());
+            assert!(matches!(
+                read_string_res,
+                Err(ProcessError::StringTooLarge)
+            ));
+        } else {
+            let read_string = read_string_res.unwrap();
+            assert_eq!(read_string, random_string);
+        }
     }
 }
 
