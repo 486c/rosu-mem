@@ -12,6 +12,18 @@ pub struct MemoryRegion {
     pub size: usize,
 }
 
+macro_rules! read_generic {
+    ($t: ty, $self: expr, $addr: expr) => {{
+        paste! {
+            let mut bytes = vec![0u8; std::mem::size_of::<T>()];
+
+            $self.read($addr, std::mem::size_of::<T>(), &mut bytes)?;
+
+            unsafe { std::ptr::read(bytes.as_ptr() as *const T) }
+        }
+    }};
+}
+
 macro_rules! prim_read_impl {
     ($t: ident) => {
         paste! {
@@ -159,7 +171,7 @@ where
         addr: T,
         limit: usize,
     ) -> Result<String, ProcessError> {
-        let addr = self.read_i32(addr)?;
+        let addr = read_generic!(T, self, addr);
 
         self.read_string_with_limit(addr, limit)
     }
@@ -178,7 +190,8 @@ where
             .try_into()
             .map_err(|_| ProcessError::AddressConvertError)?;
 
-        addr += 0x4;
+        addr += std::mem::size_of::<T>();
+
         let len = self.read_u32(addr)? as usize; // Reading 4B str len
 
         if len > limit {
@@ -208,7 +221,7 @@ where
         &self,
         addr: T,
     ) -> Result<String, ProcessError> {
-        let addr = self.read_i32(addr)?;
+        let addr = read_generic!(T, self, addr);
 
         self.read_string(addr)
     }
@@ -227,8 +240,9 @@ where
             .try_into()
             .map_err(|_| ProcessError::AddressConvertError)?;
 
-        // C# string structure: 4B obj header, 4B str len, str itself
-        addr += 0x4; // Skipping 4B obj header
+        // C# string structure: 4B/8B obj header, 4B str len, str itself
+        addr += std::mem::size_of::<T>(); // Skipping 4B/8B obj header depending on endiness
+
         let len = self.read_u32(addr)? as usize; // Reading 4B str len
         addr += 0x4; // Since we read length skipping it too
 
