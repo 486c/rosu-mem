@@ -98,7 +98,7 @@ where
     /// * `proc_name` - Name of the process or key words
     /// * `exclude` - Key words to avoid when searching for process name
     ///
-    /// Notes
+    /// Notes:
     /// For more details of searching the process name see [`find_process`]
     /// method
     fn initialize(
@@ -109,16 +109,21 @@ where
     /// Attemp to find a process
     ///
     /// * `proc_name` - Name of the process or key words
-    /// * `exclude` - Key words to avoid when searching for process name
+    /// * `exclude` - Keywords to avoid when searching for process name
     ///
     /// # Notes
-    /// It's going try to search process name by using `contains` function
+    /// It's going try to search process name by using [`str::contains`] function
     /// with `proc_name` argument on process name. Same applies to `exclude`
     fn find_process(
         proc_name: &str,
         exclude: &[&str],
     ) -> Result<Self, ProcessError>;
 
+    /// Collect memory regions offsets into itself.
+    ///
+    /// Notes:
+    /// * Function isn't whole memory just their offsets.
+    ///   Check out [`MemoryRegion`] for more info
     fn read_regions(self) -> Result<Self, ProcessError>;
 
     fn read_signature<T: TryFrom<usize>>(
@@ -166,6 +171,12 @@ where
     /// The only diffrence is that function will throw
     /// a [`ProcessError::StringTooLarge`] error if readed string length
     /// is over a provided limit
+    ///
+    /// Notes:
+    /// * `*_from_ptr()` functions usually will result in additional
+    ///   heap allocation, due to generic behaviour. If you need to avoid
+    ///   heap allocations at all costs, read pointer manually and then pass
+    ///   address to the [`ProcessTraits::read_string()`] function
     fn read_string_with_limit_from_ptr<T: TryInto<usize>>(
         &self,
         addr: T,
@@ -217,6 +228,12 @@ where
     /// Reads a C# string based on C# string structure
     /// Assumes passed `addr` is a pointer, so it's gonna make
     /// additional pointer read.
+    ///
+    /// Notes:
+    /// * `*_from_ptr()` functions usually will result in additional
+    ///   heap allocation, due to generic behaviour. If you need to avoid
+    ///   heap allocations at all costs, read pointer manually and then pass
+    ///   address to the [`ProcessTraits::read_string()`] function
     fn read_string_from_ptr<T: TryInto<usize>>(
         &self,
         addr: T,

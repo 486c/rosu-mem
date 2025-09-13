@@ -177,6 +177,30 @@ fn test_string() {
 }
 
 #[test]
+fn test_string_64bitness() {
+    let mut rng = thread_rng();
+
+    for len in [0u32, 1, 2, 4, 8, 16, 32] {
+        let mut buff = vec![0x0; 8]; // Random 8 bytes since it's x64 bitness
+        buff.extend_from_slice(&len.to_le_bytes());
+
+        let random_string: String =
+            (0..len).map(|_| rng.sample(Alphanumeric) as char).collect();
+
+        // convert to UTF-16 bytes
+        let random_string_bytes =
+            random_string.bytes().flat_map(|byte| [byte, 0]);
+
+        buff.extend(random_string_bytes);
+
+        let p = FakeProccess { buff };
+
+        let read_string = p.read_string(0i64).unwrap();
+        assert_eq!(read_string, random_string);
+    }
+}
+
+#[test]
 fn test_string_with_limit_fail_all() {
     let mut rng = thread_rng();
 
