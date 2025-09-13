@@ -106,6 +106,11 @@ where
         exclude: &[&str],
     ) -> Result<Self, ProcessError>;
 
+    /// Initialize a `Process` struct
+    ///
+    /// * `pid` - Process id
+    fn initialize_manual(pid: u32) -> Result<Self, ProcessError>;
+
     /// Attemp to find a process
     ///
     /// * `proc_name` - Name of the process or key words
